@@ -1,0 +1,76 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDEs and editors
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.factorypath
+.settings/
+
+# Java / Maven / Gradle
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+build/
+**/build/
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Generated archives and local backups
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+
+# Local proposal documents and exported files
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.pdf
+
+# Node / frontend artifacts, if any tooling is added later
+node_modules/
+dist/
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+
+# Local generated test reports
+surefire-reports/
+failsafe-reports/
+**/surefire-reports/
+**/failsafe-reports/

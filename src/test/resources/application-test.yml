@@ -1,0 +1,77 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: asp-pago-integration-test
+
+security:
+  ingress:
+    enabled: true
+    gateway-shared-secret: test-kong-jwt-bridge-secret
+    allowed-client-ids:
+      - asp-pagos-auth-service
+
+providers:
+  nubarium:
+    base-url: http://localhost:9090
+    api-key: test-key-nubarium
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+  telmex:
+    base-url: http://localhost:9090
+    api-key: test-key-telmex
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+  dock:
+    base-url: http://localhost:9090
+    api-key: test-key-dock
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+  mycard:
+    base-url: http://localhost:9090
+    api-key: test-key-mycard
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+  bonsai:
+    base-url: http://localhost:9090
+    api-key: test-key-bonsai
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+  caudex:
+    base-url: http://localhost:9090
+    client-id: test-client-id
+    client-secret: test-client-secret
+    scope: message.read
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      proveedorExterno:
+        slidingWindowSize: 4
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5s
+        # permittedNumberOfCallsInHalfOpenState evita flapping durante tests
+        permittedNumberOfCallsInHalfOpenState: 1
+  retry:
+    instances:
+      proveedorExterno:
+        maxAttempts: 2
+        waitDuration: 100ms
+  bulkhead:
+    instances:
+      proveedorExterno:
+        maxConcurrentCalls: 5
+        maxWaitDuration: 100ms
+  timelimiter:
+    instances:
+      proveedorExterno:
+        timeoutDuration: 3s
+
+logging:
+  level:
+    com.asp.integration: DEBUG
+    io.github.resilience4j: DEBUG

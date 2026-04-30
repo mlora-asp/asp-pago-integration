@@ -1,0 +1,21 @@
+services:
+  asp-pago-integration:
+    build: .
+    container_name: asp-pago-integration
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SECURITY_CRYPTO_ENABLED: ${SECURITY_CRYPTO_ENABLED:-true}
+      CRYPTO_SECRET: ${CRYPTO_SECRET:?CRYPTO_SECRET must be configured}
+      GATEWAY_SHARED_SECRET: ${GATEWAY_SHARED_SECRET:?GATEWAY_SHARED_SECRET must be configured}
+      CAUDEX_BASE_URL: ${CAUDEX_BASE_URL:?CAUDEX_BASE_URL must be configured}
+      CAUDEX_CLIENT_ID: ${CAUDEX_CLIENT_ID:?CAUDEX_CLIENT_ID must be configured}
+      CAUDEX_CLIENT_SECRET: ${CAUDEX_CLIENT_SECRET:?CAUDEX_CLIENT_SECRET must be configured}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped

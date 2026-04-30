@@ -1,0 +1,136 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: asp-pago-integration
+
+  main:
+    banner-mode: off
+
+  # ── ConfigurationProperties binding ──────────────────────────────────────────
+  # Habilita la validación (@Validated) y el binding de @ConfigurationProperties
+  config:
+    import: optional:classpath:application-${spring.profiles.active:local}.yml
+
+# ── Seguridad de ingreso JWT externo -> Kong -> Bridge ───────────────────────
+# El Bridge sólo acepta tráfico de negocio que venga desde Kong con un secreto
+# interno y un JWT ya validado por el gateway.
+security:
+  ingress:
+    enabled: true
+    gateway-secret-header: X-Gateway-Secret
+    gateway-shared-secret: ${GATEWAY_SHARED_SECRET}
+    authenticated-client-header: X-Authenticated-Client
+    authenticated-user-header: X-Authenticated-User
+    authenticated-scopes-header: X-Authenticated-Scopes
+    system-origin-header: X-Sistema-Origen
+    allowed-client-ids:
+      - asp-pagos-auth-service
+    require-authenticated-user-for-operations: true
+    public-path-prefixes:
+      - /actuator/health
+      - /actuator/info
+      - /swagger-ui
+      - /swagger-ui.html
+      - /v3/api-docs
+      - /error
+  crypto:
+    enabled: ${SECURITY_CRYPTO_ENABLED:false}
+    secret-key: ${CRYPTO_SECRET:}
+    encoding: UTF-8
+
+# ── Proveedor externo: Caudex ─────────────────────────────────────────────────
+# Todos los valores sensibles y URLs externas deben provenir de variables de entorno.
+providers:
+  caudex:
+    # URL base de Caudex. El endpoint OAuth2 (/oauth2/token) y todos los endpoints
+    # de negocio comparten el mismo host.
+    base-url: ${CAUDEX_BASE_URL}
+    # Credenciales OAuth2 client_credentials. NUNCA hardcodear.
+    client-id: ${CAUDEX_CLIENT_ID}
+    client-secret: ${CAUDEX_CLIENT_SECRET}
+    scope: message.read
+    connect-timeout-ms: 5000
+    read-timeout-ms: 15000
+    token:
+      refresh-skew-seconds: 120
+      default-expires-in-seconds: 1799
+    endpoints:
+      "[CAUDEX_CONSULTA_CUENTA_VISTA]": /api/depositos-vista/consultaDatosBasicos
+      "[CAUDEX_CONSULTA_SALDOS_VISTA]": /api/depositos-vista/consultaSaldos
+      "[CAUDEX_DEPOSITO_CUENTA_VISTA]": /api/depositos-vista/depositoCuenta
+      "[CAUDEX_RETIRO_CUENTA_VISTA]": /api/depositos-vista/retiroCuenta
+      "[CAUDEX_CONSULTA_HISTORICO_VISTA]": /api/depositos-vista/consultaHistorico
+      "[CAUDEX_CONSULTA_SALDOS_CREDITO]": /api/credito/consultaSaldosCredito
+      "[CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL]": /api/clientes/perfilTransaccional/consulta
+      "[CAUDEX_ALTA_RELACION_CLIENTE]": /api/clientes/relacionClienteCliente/alta
+
+# ── Resilience4j ──────────────────────────────────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    instances:
+      proveedorExterno:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+  retry:
+    instances:
+      proveedorExterno:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+  bulkhead:
+    instances:
+      proveedorExterno:
+        maxConcurrentCalls: 20
+        maxWaitDuration: 500ms
+  timelimiter:
+    instances:
+      proveedorExterno:
+        timeoutDuration: 10s
+        cancelRunningFuture: true
+
+# ── Actuator / Observabilidad ─────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+# ── OpenAPI / Swagger ─────────────────────────────────────────────────────────
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.asp.integration: DEBUG
+    io.github.resilience4j: INFO
+    reactor.netty.http.client: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] %logger{36} - %msg%n"

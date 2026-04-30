@@ -1,0 +1,29 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Perfil DEV — Entorno de integración/desarrollo compartido
+#
+# Todas las variables de entorno deben estar configuradas en el servidor de DEV.
+# Los valores hardcodeados aquí son PLACEHOLDERS — nunca se usan en producción.
+# ──────────────────────────────────────────────────────────────────────────────
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: asp-pago-integration-dev
+
+providers:
+  caudex:
+    base-url: ${CAUDEX_BASE_URL}
+    client-id: ${CAUDEX_CLIENT_ID}
+    client-secret: ${CAUDEX_CLIENT_SECRET}
+    connect-timeout-ms: 8000
+    read-timeout-ms: 20000
+    token:
+      refresh-skew-seconds: 120
+      default-expires-in-seconds: 1799
+
+logging:
+  level:
+    com.asp.integration: DEBUG
+    io.github.resilience4j: DEBUG

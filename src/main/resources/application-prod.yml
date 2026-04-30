@@ -1,0 +1,48 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Perfil PROD — Entorno de producción
+#
+# TODAS las variables de entorno son OBLIGATORIAS.
+# Si alguna no está configurada, la aplicación fallará en arranque (fail-fast).
+# Esto es intencional: mejor fallar al arrancar que conectarse con credenciales vacías.
+#
+# Variables requeridas:
+#   CAUDEX_BASE_URL        → URL base de Caudex en producción
+#   CAUDEX_CLIENT_ID       → Client ID OAuth2 de Caudex (producción)
+#   CAUDEX_CLIENT_SECRET   → Client Secret OAuth2 de Caudex (producción) — SECRETO
+# ──────────────────────────────────────────────────────────────────────────────
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: asp-pago-integration
+
+providers:
+  caudex:
+    base-url: ${CAUDEX_BASE_URL}
+    client-id: ${CAUDEX_CLIENT_ID}
+    client-secret: ${CAUDEX_CLIENT_SECRET}
+    scope: message.read
+    connect-timeout-ms: 5000
+    read-timeout-ms: 15000
+    token:
+      refresh-skew-seconds: 120
+      default-expires-in-seconds: 1799
+
+# Logging mínimo en producción — sin información sensible
+logging:
+  level:
+    com.asp.integration: INFO
+    io.github.resilience4j: WARN
+    reactor.netty.http.client: WARN
+
+# Actuator — solo health y metrics en producción
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
