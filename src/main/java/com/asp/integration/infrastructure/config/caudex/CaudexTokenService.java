@@ -2,6 +2,8 @@ package com.asp.integration.infrastructure.config.caudex;
 
 import com.asp.integration.infrastructure.config.properties.CaudexProperties;
 import com.asp.integration.domain.exception.CaudexAuthException;
+import com.asp.integration.shared.constants.ApiPaths;
+import com.asp.integration.shared.constants.ResponseMessages;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -123,7 +125,7 @@ public class CaudexTokenService {
 
         return tokenWebClient
                 .post()
-                .uri("/oauth2/token")
+                .uri(ApiPaths.CAUDEX_OAUTH_TOKEN)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData(formData))
                 .retrieve()
@@ -138,8 +140,7 @@ public class CaudexTokenService {
         String token = response.getAccessToken();
         if (!StringUtils.hasText(token)) {
             log.error("[CAUDEX-TOKEN] Caudex devolvió token vacío o nulo");
-            return Mono.error(new CaudexAuthException(
-                    "Caudex devolvió un token vacío — verificar configuración OAuth2"));
+            return Mono.error(new CaudexAuthException(ResponseMessages.TOKEN_CAUDEX_VACIO));
         }
         log.debug("[CAUDEX-TOKEN] Token obtenido exitosamente (expires_in={}s, type={})",
                 response.getExpiresIn(), response.getTokenType());
@@ -169,13 +170,13 @@ public class CaudexTokenService {
 
         return switch (status) {
             case 400 -> Mono.error(new CaudexAuthException(
-                    "Parámetros OAuth2 inválidos (grant_type, scope)", status));
+                    ResponseMessages.PARAMETROS_OAUTH_INVALIDOS, status));
             case 401 -> Mono.error(new CaudexAuthException(
-                    "Credenciales Caudex inválidas (client_id/client_secret)", status));
+                    ResponseMessages.CREDENCIALES_CAUDEX_INVALIDAS, status));
             case 403 -> Mono.error(new CaudexAuthException(
-                    "Sin permisos para obtener token Caudex", status));
+                    ResponseMessages.PERMISOS_CAUDEX_INVALIDOS, status));
             default -> Mono.error(new CaudexAuthException(
-                    "Error inesperado al obtener token Caudex HTTP " + status, status));
+                    ResponseMessages.CREDENTIALS_CAUDEX_UNEXPECTED_PREFIX + status, status));
         };
     }
 

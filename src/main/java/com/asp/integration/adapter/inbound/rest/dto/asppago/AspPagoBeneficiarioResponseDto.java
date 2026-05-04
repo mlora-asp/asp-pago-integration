@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import static com.asp.integration.shared.constants.ResponseMessages.BENEFICIARIO_REGISTRADO;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,7 +20,7 @@ public class AspPagoBeneficiarioResponseDto {
     @Schema(example = "200")
     private Integer code;
 
-    @Schema(example = "Beneficiario registrado correctamente")
+    @Schema(example = BENEFICIARIO_REGISTRADO)
     private String message;
 
     @Schema(nullable = true)

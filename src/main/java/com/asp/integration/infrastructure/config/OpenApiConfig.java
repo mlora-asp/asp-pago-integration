@@ -1,5 +1,6 @@
 package com.asp.integration.infrastructure.config;
 
+import com.asp.integration.shared.constants.ApiPaths;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -39,7 +40,28 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("ASP Pago Integration Bridge — API")
                         .version("1.0.0")
-                        .description("""
+                        .description(description())
+                        .contact(new Contact()
+                                .name("Equipo ASP Pagos")
+                                .email("integraciones@asp-pagos.com"))
+                        .license(new License()
+                                .name("Uso interno ASP — Confidencial"))
+                )
+                .servers(List.of(
+                        new Server()
+                                .url(localServerUrl)
+                                .description("Desarrollo local directo al bridge"),
+                        new Server()
+                                .url(dockerServerUrl)
+                                .description("Entorno Docker / red interna"),
+                        new Server()
+                                .url(kongServerUrl)
+                                .description("Entrada vía Kong")
+                ));
+    }
+
+    private String description() {
+        return """
                                 **Bridge de Integración** entre los canales de ASP Pagos y los proveedores externos.
 
                                 Esta documentación describe la superficie REST oficial del microservicio
@@ -96,12 +118,12 @@ public class OpenApiConfig {
 
                                 ## Endpoints expuestos
 
-                                - `POST /auth/login`
-                                - `POST /auth/logout`
-                                - `POST /auth/password/otp`
-                                - `POST /auth/password/reset`
-                                - `POST /onboarding`
-                                - `POST /beneficiario/alta`
+                                - `POST %s`
+                                - `POST %s`
+                                - `POST %s`
+                                - `POST %s`
+                                - `POST %s`
+                                - `POST %s`
 
                                 ## Uso recomendado
 
@@ -116,23 +138,13 @@ public class OpenApiConfig {
                                 - **Retry** (3 reintentos con backoff exponencial)
                                 - **Bulkhead** (máximo 20 llamadas concurrentes por proveedor)
                                 - **Time Limiter** (timeout de 10s)
-                                """)
-                        .contact(new Contact()
-                                .name("Equipo ASP Pagos")
-                                .email("integraciones@asp-pagos.com"))
-                        .license(new License()
-                                .name("Uso interno ASP — Confidencial"))
-                )
-                .servers(List.of(
-                        new Server()
-                                .url(localServerUrl)
-                                .description("Desarrollo local directo al bridge"),
-                        new Server()
-                                .url(dockerServerUrl)
-                                .description("Entorno Docker / red interna"),
-                        new Server()
-                                .url(kongServerUrl)
-                                .description("Entrada vía Kong")
-                ));
+                                """
+                .formatted(
+                        ApiPaths.AUTH_LOGIN,
+                        ApiPaths.AUTH_LOGOUT,
+                        ApiPaths.AUTH_PASSWORD_OTP,
+                        ApiPaths.AUTH_PASSWORD_RESET,
+                        ApiPaths.ONBOARDING,
+                        ApiPaths.BENEFICIARIO_ALTA);
     }
 }

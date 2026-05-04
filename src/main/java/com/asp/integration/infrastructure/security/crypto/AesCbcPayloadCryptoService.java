@@ -3,6 +3,7 @@ package com.asp.integration.infrastructure.security.crypto;
 import com.asp.integration.application.port.inbound.PayloadCryptoPort;
 import com.asp.integration.domain.exception.PayloadDecryptionException;
 import com.asp.integration.infrastructure.config.properties.CryptoProperties;
+import com.asp.integration.shared.constants.ResponseMessages;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,7 +51,7 @@ public class AesCbcPayloadCryptoService implements PayloadCryptoPort {
         ensureEnabledAndConfigured();
 
         if (!StringUtils.hasText(encryptedPayload)) {
-            throw new PayloadDecryptionException("El payload cifrado está vacío o nulo");
+            throw new PayloadDecryptionException(ResponseMessages.PAYLOAD_CIFRADO_VACIO);
         }
 
         String normalizedPayload = normalizeEncryptedPayload(encryptedPayload);
@@ -69,7 +70,7 @@ public class AesCbcPayloadCryptoService implements PayloadCryptoPort {
             byte[] plainBytes = cipher.doFinal(encryptedBytes);
             return new String(plainBytes, StandardCharsets.UTF_8);
         } catch (Exception ex) {
-            throw new PayloadDecryptionException("No fue posible desencriptar la información recibida", ex);
+            throw new PayloadDecryptionException(ResponseMessages.PAYLOAD_DESENCRIPTAR_ERROR, ex);
         }
     }
 
@@ -78,7 +79,7 @@ public class AesCbcPayloadCryptoService implements PayloadCryptoPort {
         ensureEnabledAndConfigured();
 
         if (!StringUtils.hasText(plainPayload)) {
-            throw new PayloadDecryptionException("La información a encriptar está vacía o nula");
+            throw new PayloadDecryptionException(ResponseMessages.PAYLOAD_ENCRIPTAR_VACIO);
         }
 
         String keySource = generateKeySource(properties.getSecretKey());
@@ -95,7 +96,7 @@ public class AesCbcPayloadCryptoService implements PayloadCryptoPort {
             byte[] encryptedBytes = cipher.doFinal(plainPayload.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception ex) {
-            throw new PayloadDecryptionException("No fue posible encriptar la información de respuesta", ex);
+            throw new PayloadDecryptionException(ResponseMessages.PAYLOAD_ENCRIPTAR_ERROR, ex);
         }
     }
 
@@ -123,9 +124,9 @@ public class AesCbcPayloadCryptoService implements PayloadCryptoPort {
 
             return decoded;
         } catch (JsonProcessingException ex) {
-            throw new PayloadDecryptionException("El payload cifrado llegó en un formato JSON inválido", ex);
+            throw new PayloadDecryptionException(ResponseMessages.PAYLOAD_JSON_INVALIDO, ex);
         } catch (Exception ex) {
-            throw new PayloadDecryptionException("No fue posible normalizar el payload cifrado recibido", ex);
+            throw new PayloadDecryptionException(ResponseMessages.PAYLOAD_NORMALIZAR_ERROR, ex);
         }
     }
 
@@ -135,16 +136,16 @@ public class AesCbcPayloadCryptoService implements PayloadCryptoPort {
             byte[] hash = digest.digest(secretKey.getBytes(StandardCharsets.UTF_8));
             return HEX.formatHex(hash);
         } catch (Exception ex) {
-            throw new PayloadDecryptionException("No fue posible derivar la llave de cifrado", ex);
+            throw new PayloadDecryptionException(ResponseMessages.CRYPTO_KEY_DERIVATION_ERROR, ex);
         }
     }
 
     private void ensureEnabledAndConfigured() {
         if (!properties.isEnabled()) {
-            throw new PayloadDecryptionException("El soporte de crypto está deshabilitado en este entorno");
+            throw new PayloadDecryptionException(ResponseMessages.CRYPTO_DISABLED);
         }
         if (!StringUtils.hasText(properties.getSecretKey())) {
-            throw new PayloadDecryptionException("La llave de crypto no está configurada");
+            throw new PayloadDecryptionException(ResponseMessages.CRYPTO_KEY_NOT_CONFIGURED);
         }
     }
 }

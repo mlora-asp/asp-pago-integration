@@ -2,6 +2,8 @@ package com.asp.integration.infrastructure.exception;
 
 import com.asp.integration.domain.exception.BusinessException;
 import com.asp.integration.domain.exception.ExternalServiceException;
+import com.asp.integration.shared.constants.ResponseCodes;
+import com.asp.integration.shared.constants.ResponseMessages;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,8 +39,8 @@ public class GlobalExceptionHandler {
                         .timestamp(Instant.now())
                         .status(HttpStatus.BAD_REQUEST.value())
                         .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                        .codigoResultado("ERROR_VALIDACION")
-                        .mensaje("Campos inválidos en la solicitud")
+                        .codigoResultado(ResponseCodes.ERROR_VALIDACION)
+                        .mensaje(ResponseMessages.CAMPOS_INVALIDOS)
                         .path(request.getRequestURI())
                         .errores(fieldErrors)
                         .build()
@@ -99,8 +101,8 @@ public class GlobalExceptionHandler {
                         .timestamp(Instant.now())
                         .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                         .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                        .codigoResultado("ERROR_INTERNO")
-                        .mensaje("Error interno del Bridge de Integración")
+                        .codigoResultado(ResponseCodes.ERROR_INTERNO)
+                        .mensaje(ResponseMessages.ERROR_INTERNO_BRIDGE)
                         .path(request.getRequestURI())
                         .build()
         );
@@ -113,13 +115,13 @@ public class GlobalExceptionHandler {
     private String sanitizeMessage(String originalMessage, HttpStatus status) {
         if (status.is5xxServerError()) {
             return switch (status) {
-                case SERVICE_UNAVAILABLE -> "Servicio externo temporalmente no disponible";
-                default -> "Ocurrió un error al procesar la solicitud";
+                case SERVICE_UNAVAILABLE -> ResponseMessages.SERVICIO_EXTERNO_NO_DISPONIBLE;
+                default -> ResponseMessages.ERROR_PROCESAR_SOLICITUD;
             };
         }
 
         if (originalMessage == null || originalMessage.isBlank()) {
-            return "La solicitud no pudo ser procesada";
+            return ResponseMessages.SOLICITUD_NO_PROCESADA;
         }
 
         if (originalMessage.length() > 300) {

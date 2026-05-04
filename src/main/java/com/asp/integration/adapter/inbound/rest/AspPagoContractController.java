@@ -12,6 +12,11 @@ import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoResponseDto;
 import com.asp.integration.adapter.inbound.rest.mapper.asppago.AspPagoContractMapper;
 import com.asp.integration.application.port.inbound.PayloadCryptoPort;
 import com.asp.integration.domain.exception.BadRequestException;
+import com.asp.integration.shared.constants.ApiPaths;
+import com.asp.integration.shared.constants.OpenApiTexts;
+import com.asp.integration.shared.constants.OperationTypes;
+import com.asp.integration.shared.constants.ResponseCodes;
+import com.asp.integration.shared.constants.ResponseMessages;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +36,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "ASP Pago", description = "Contratos oficiales definidos en Nuevo ASP Pago")
+@Tag(name = OpenApiTexts.TAG_ASP_PAGO, description = OpenApiTexts.TAG_ASP_PAGO_DESCRIPTION)
 public class AspPagoContractController {
 
     private final AspPagoContractMapper mapper;
@@ -39,47 +44,47 @@ public class AspPagoContractController {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    @PostMapping("/beneficiario/alta")
-    @Operation(summary = "Alta completa de beneficiario (flujo transaccional)")
+    @PostMapping(ApiPaths.BENEFICIARIO_ALTA)
+    @Operation(summary = OpenApiTexts.SUMMARY_BENEFICIARIO_ALTA)
     public Mono<ResponseEntity<AspPagoBeneficiarioResponseDto>> altaBeneficiario(
             @Valid @RequestBody EncryptedRequestDto encryptedRequest) {
         decryptAndValidate(encryptedRequest, AltaBeneficiarioRequest.class);
         return Mono.just(ResponseEntity.ok(encryptData(mapper.dummyBeneficiario())));
     }
 
-    @PostMapping("/auth/login")
-    @Operation(summary = "Login móvil")
+    @PostMapping(ApiPaths.AUTH_LOGIN)
+    @Operation(summary = OpenApiTexts.SUMMARY_LOGIN)
     public ResponseEntity<AspPagoResponseDto> login(@Valid @RequestBody EncryptedRequestDto encryptedRequest) {
         decryptAndValidate(encryptedRequest, LoginRequest.class);
-        return ResponseEntity.ok(encryptData(mapper.dummy("LOGIN_DUMMY", "Login realizado exitosamente")));
+        return ResponseEntity.ok(encryptData(mapper.dummy(OperationTypes.LOGIN_DUMMY, ResponseMessages.LOGIN_EXITOSO)));
     }
 
-    @PostMapping("/auth/logout")
-    @Operation(summary = "Logout")
+    @PostMapping(ApiPaths.AUTH_LOGOUT)
+    @Operation(summary = OpenApiTexts.SUMMARY_LOGOUT)
     public ResponseEntity<AspPagoResponseDto> logout(@Valid @RequestBody EncryptedRequestDto encryptedRequest) {
         decryptAndValidate(encryptedRequest, LogoutRequest.class);
-        return ResponseEntity.ok(encryptData(mapper.dummy("LOGOUT_DUMMY", "Logout realizado exitosamente")));
+        return ResponseEntity.ok(encryptData(mapper.dummy(OperationTypes.LOGOUT_DUMMY, ResponseMessages.LOGOUT_EXITOSO)));
     }
 
-    @PostMapping("/auth/password/otp")
-    @Operation(summary = "Solicitar OTP para restablecer contraseña")
+    @PostMapping(ApiPaths.AUTH_PASSWORD_OTP)
+    @Operation(summary = OpenApiTexts.SUMMARY_PASSWORD_OTP)
     public ResponseEntity<AspPagoResponseDto> passwordOtp(@Valid @RequestBody EncryptedRequestDto encryptedRequest) {
         decryptAndValidate(encryptedRequest, PasswordOtpRequest.class);
-        return ResponseEntity.ok(encryptData(mapper.dummy("PASSWORD_OTP_DUMMY", "OTP generado exitosamente")));
+        return ResponseEntity.ok(encryptData(mapper.dummy(OperationTypes.PASSWORD_OTP_DUMMY, ResponseMessages.OTP_GENERADO)));
     }
 
-    @PostMapping("/auth/password/reset")
-    @Operation(summary = "Validar OTP y restablecer contraseña")
+    @PostMapping(ApiPaths.AUTH_PASSWORD_RESET)
+    @Operation(summary = OpenApiTexts.SUMMARY_PASSWORD_RESET)
     public ResponseEntity<AspPagoResponseDto> passwordReset(@Valid @RequestBody EncryptedRequestDto encryptedRequest) {
         decryptAndValidate(encryptedRequest, PasswordResetRequest.class);
-        return ResponseEntity.ok(encryptData(mapper.dummy("PASSWORD_RESET_DUMMY", "Password actualizado exitosamente")));
+        return ResponseEntity.ok(encryptData(mapper.dummy(OperationTypes.PASSWORD_RESET_DUMMY, ResponseMessages.PASSWORD_ACTUALIZADO)));
     }
 
-    @PostMapping("/onboarding")
-    @Operation(summary = "Onboarding completo")
+    @PostMapping(ApiPaths.ONBOARDING)
+    @Operation(summary = OpenApiTexts.SUMMARY_ONBOARDING)
     public ResponseEntity<AspPagoResponseDto> onboarding(@Valid @RequestBody EncryptedRequestDto encryptedRequest) {
         decryptAndValidate(encryptedRequest, OnboardingRequest.class);
-        return ResponseEntity.ok(encryptData(mapper.dummy("ONBOARDING_DUMMY", "Onboarding procesado exitosamente")));
+        return ResponseEntity.ok(encryptData(mapper.dummy(OperationTypes.ONBOARDING_DUMMY, ResponseMessages.ONBOARDING_EXITOSO)));
     }
 
     private <T> T decryptAndValidate(EncryptedRequestDto encryptedRequest, Class<T> requestType) {
@@ -90,8 +95,8 @@ public class AspPagoContractController {
             return request;
         } catch (JsonProcessingException ex) {
             throw new BadRequestException(
-                    "ERROR_VALIDACION",
-                    "El payload desencriptado no corresponde al contrato esperado",
+                    ResponseCodes.ERROR_VALIDACION,
+                    ResponseMessages.PAYLOAD_CONTRATO_INVALIDO,
                     ex);
         }
     }
@@ -105,7 +110,8 @@ public class AspPagoContractController {
         String message = violations.stream()
                 .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
                 .collect(Collectors.joining("; "));
-        throw new BadRequestException("ERROR_VALIDACION", "Campos inválidos en la solicitud: " + message);
+        throw new BadRequestException(ResponseCodes.ERROR_VALIDACION,
+                ResponseMessages.CAMPOS_INVALIDOS_PREFIX + message);
     }
 
     private AspPagoResponseDto encryptData(AspPagoResponseDto response) {
@@ -127,7 +133,8 @@ public class AspPagoContractController {
             String plainData = objectMapper.writeValueAsString(data);
             return payloadCryptoPort.encryptResponse(plainData);
         } catch (JsonProcessingException ex) {
-            throw new BadRequestException("ERROR_ENCRIPTADO_RESPUESTA", "No fue posible serializar data de respuesta", ex);
+            throw new BadRequestException(ResponseCodes.ERROR_ENCRIPTADO_RESPUESTA,
+                    ResponseMessages.SERIALIZAR_DATA_RESPUESTA_ERROR, ex);
         }
     }
 }

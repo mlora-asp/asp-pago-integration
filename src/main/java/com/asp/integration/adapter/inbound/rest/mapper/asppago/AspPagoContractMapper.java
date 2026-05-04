@@ -4,6 +4,9 @@ import com.asp.integration.adapter.inbound.rest.dto.OperacionRequestDto;
 import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoBeneficiarioResponseDto;
 import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoResponseDto;
 import com.asp.integration.domain.model.canonical.CanonicalResponse;
+import com.asp.integration.shared.constants.OperationTypes;
+import com.asp.integration.shared.constants.ResponseCodes;
+import com.asp.integration.shared.constants.ResponseMessages;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +50,7 @@ public class AspPagoContractMapper {
 
     public AspPagoBeneficiarioResponseDto toBeneficiarioResponse(CanonicalResponse canonical) {
         int status = canonical.getHttpStatus() != null ? canonical.getHttpStatus() : HttpStatus.OK.value();
-        boolean error = status >= 400 || !"SUCCESS".equalsIgnoreCase(canonical.getCodigoResultado());
+        boolean error = status >= 400 || !ResponseCodes.SUCCESS.equalsIgnoreCase(canonical.getCodigoResultado());
         return AspPagoBeneficiarioResponseDto.builder()
                 .code(status)
                 .message(canonical.getMensaje())
@@ -60,7 +63,7 @@ public class AspPagoContractMapper {
         return AspPagoResponseDto.builder()
                 .code(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .message(mensaje)
-                .error("ERROR_INTERNO")
+                .error(ResponseCodes.ERROR_INTERNO)
                 .data(null)
                 .build();
     }
@@ -77,7 +80,7 @@ public class AspPagoContractMapper {
     public AspPagoBeneficiarioResponseDto dummyBeneficiario() {
         return AspPagoBeneficiarioResponseDto.builder()
                 .code(HttpStatus.OK.value())
-                .message("Beneficiario registrado correctamente")
+                .message(ResponseMessages.BENEFICIARIO_REGISTRADO)
                 .error(null)
                 .data(null)
                 .build();
@@ -85,7 +88,7 @@ public class AspPagoContractMapper {
 
     private Object dummyData(String operationType) {
         return switch (operationType) {
-            case "CAUDEX_CONSULTA_SALDOS_VISTA" -> mapOfNullable(
+            case OperationTypes.CAUDEX_CONSULTA_SALDOS_VISTA -> mapOfNullable(
                     "sdoTotal", 4621.50,
                     "sdoDisponible", 4621.50,
                     "sdoCapital", 4621.50,
@@ -97,7 +100,7 @@ public class AspPagoContractMapper {
                     "sdoEnreciprocidad", null,
                     "sdoRetenido", null
             );
-            case "CAUDEX_CONSULTA_CUENTA_VISTA" -> Map.ofEntries(
+            case OperationTypes.CAUDEX_CONSULTA_CUENTA_VISTA -> Map.ofEntries(
                     Map.entry("numeroMoneda", 1),
                     Map.entry("descripcionMoneda", "PESOS"),
                     Map.entry("numeroProducto", 101),
@@ -113,7 +116,7 @@ public class AspPagoContractMapper {
                     Map.entry("intPeriodicidadPago", 30),
                     Map.entry("descripcionPeriodicidadPago", "MENSUAL")
             );
-            case "CAUDEX_CONSULTA_HISTORICO_VISTA" -> java.util.List.of(
+            case OperationTypes.CAUDEX_CONSULTA_HISTORICO_VISTA -> java.util.List.of(
                     Map.of(
                             "fechaOperacion", "2025-06-20T12:00:00",
                             "transaccionExterna", 1001,
@@ -125,7 +128,7 @@ public class AspPagoContractMapper {
                             "folioOperacion", 987654321L
                     )
             );
-            case "CAUDEX_CONSULTA_SALDOS_CREDITO" -> Map.ofEntries(
+            case OperationTypes.CAUDEX_CONSULTA_SALDOS_CREDITO -> Map.ofEntries(
                     Map.entry("sdoTotal", 15000.00),
                     Map.entry("numPagosVencidos", 0),
                     Map.entry("sdoPagosVencidos", 0.0),
@@ -139,7 +142,7 @@ public class AspPagoContractMapper {
                     Map.entry("fechaAlta", "2025-01-01T10:00:00"),
                     Map.entry("idUsuarioAlta", "USRCONFIG")
             );
-            case "CAUDEX_DEPOSITO_CUENTA_VISTA" -> Map.of(
+            case OperationTypes.CAUDEX_DEPOSITO_CUENTA_VISTA -> Map.of(
                     "folioOperacion", "987654321",
                     "fechaAplicacion", "2026-04-29",
                     "statusTransaccion", "1",
@@ -148,7 +151,7 @@ public class AspPagoContractMapper {
                             "descripcionCortaMoneda", "MXN"
                     )
             );
-            case "CAUDEX_RETIRO_CUENTA_VISTA" -> Map.of(
+            case OperationTypes.CAUDEX_RETIRO_CUENTA_VISTA -> Map.of(
                     "folioOperacion", "987654322",
                     "fechaAplicacion", "2026-04-29",
                     "statusTransaccion", "1",
@@ -157,7 +160,7 @@ public class AspPagoContractMapper {
                             "descripcionCortaMoneda", "MXN"
                     )
             );
-            case "CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL" -> Map.of(
+            case OperationTypes.CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL -> Map.of(
                     "perfiles", java.util.List.of(Map.ofEntries(
                             Map.entry("numeroCliente", 102733),
                             Map.entry("numeroConsecutivo", 1),
@@ -188,33 +191,33 @@ public class AspPagoContractMapper {
                             Map.entry("descripcionStatus", "ACTIVO")
                     ))
             );
-            case "PAGO_CREDITO_DUMMY" -> Map.of(
+            case OperationTypes.PAGO_CREDITO_DUMMY -> Map.of(
                     "folioOperacion", "PC-987654321",
                     "fechaAplicacion", "2026-04-29",
                     "statusTransaccion", 1
             );
-            case "LOGIN_DUMMY" -> Map.of(
+            case OperationTypes.LOGIN_DUMMY -> Map.of(
                     "accessToken", "dummy-access-token",
                     "refreshToken", "dummy-refresh-token",
                     "tokenType", "Bearer",
                     "expiresIn", 3600,
                     "usuario", "USRCONFIG"
             );
-            case "LOGOUT_DUMMY" -> Map.of(
+            case OperationTypes.LOGOUT_DUMMY -> Map.of(
                     "sesionCerrada", true,
                     "fechaCierre", "2026-04-29T12:00:00"
             );
-            case "PASSWORD_OTP_DUMMY" -> Map.of(
+            case OperationTypes.PASSWORD_OTP_DUMMY -> Map.of(
                     "expiracion", "2026-04-29T12:05:00",
                     "reintentosRestantes", 3,
                     "canalEnvio", "SMS"
             );
-            case "PASSWORD_RESET_DUMMY" -> Map.of(
+            case OperationTypes.PASSWORD_RESET_DUMMY -> Map.of(
                     "passwordActualizado", true,
                     "requiereLogin", true,
                     "fechaCambio", "2026-04-29T12:00:00"
             );
-            case "ONBOARDING_DUMMY" -> Map.of();
+            case OperationTypes.ONBOARDING_DUMMY -> Map.of();
             default -> null;
         };
     }
@@ -228,7 +231,7 @@ public class AspPagoContractMapper {
     }
 
     private void normalizeOperationData(String operationType, Map<String, Object> datos) {
-        if ("CAUDEX_RETIRO_CUENTA_VISTA".equals(operationType)) {
+        if (OperationTypes.CAUDEX_RETIRO_CUENTA_VISTA.equals(operationType)) {
             copyIfAbsent(datos, "numeroCuenta", "numeroCuentaOrigen");
             copyIfAbsent(datos, "monto", "montoTransaccion");
             datos.computeIfPresent("claveCanalOperacion", (key, value) -> channelCode(value.toString()));
@@ -237,12 +240,12 @@ public class AspPagoContractMapper {
             return;
         }
 
-        if ("CAUDEX_DEPOSITO_CUENTA_VISTA".equals(operationType)) {
+        if (OperationTypes.CAUDEX_DEPOSITO_CUENTA_VISTA.equals(operationType)) {
             copyIfAbsent(datos, "montoTransaccion", "monto");
             return;
         }
 
-        if ("CAUDEX_ALTA_RELACION_CLIENTE".equals(operationType)) {
+        if (OperationTypes.CAUDEX_ALTA_RELACION_CLIENTE.equals(operationType)) {
             Object relacion = datos.get("beneficiarioRelacion");
             if (relacion instanceof Map<?, ?> map) {
                 Map<String, Object> flattened = new LinkedHashMap<>();
@@ -255,8 +258,8 @@ public class AspPagoContractMapper {
 
     private BigDecimal resolveMonto(String operationType, Map<String, Object> datos) {
         Object raw = switch (operationType) {
-            case "CAUDEX_DEPOSITO_CUENTA_VISTA" -> datos.get("monto");
-            case "CAUDEX_RETIRO_CUENTA_VISTA" -> datos.get("montoTransaccion");
+            case OperationTypes.CAUDEX_DEPOSITO_CUENTA_VISTA -> datos.get("monto");
+            case OperationTypes.CAUDEX_RETIRO_CUENTA_VISTA -> datos.get("montoTransaccion");
             default -> null;
         };
 

@@ -1,6 +1,7 @@
 package com.asp.integration.infrastructure.security;
 
 import com.asp.integration.infrastructure.config.properties.IngressSecurityProperties;
+import com.asp.integration.shared.constants.ResponseCodes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -230,7 +231,7 @@ public class TrustedGatewayFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("codigoResultado", "ERROR_SEGURIDAD_INGRESS");
+        body.put("codigoResultado", ResponseCodes.ERROR_SEGURIDAD_INGRESS);
         body.put("mensaje", message);
         body.put("timestamp", Instant.now().toString());
 

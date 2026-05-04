@@ -9,6 +9,10 @@ import com.asp.integration.adapter.outbound.provider.mapper.CaudexMapper;
 import com.asp.integration.domain.model.canonical.CanonicalRequest;
 import com.asp.integration.domain.model.canonical.CanonicalResponse;
 import com.asp.integration.infrastructure.config.properties.CaudexProperties;
+import com.asp.integration.shared.constants.OperationTypes;
+import com.asp.integration.shared.constants.ProviderConstants;
+import com.asp.integration.shared.constants.ResponseCodes;
+import com.asp.integration.shared.constants.ResponseMessages;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -79,36 +83,36 @@ public class CaudexClient implements ProviderGateway {
     @PostConstruct
     public void registerHandlers() {
 
-        operationHandlers.put("CAUDEX_CONSULTA_CUENTA_VISTA",
-                handler(endpoint("CAUDEX_CONSULTA_CUENTA_VISTA"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_CONSULTA_CUENTA_VISTA,
+                handler(endpoint(OperationTypes.CAUDEX_CONSULTA_CUENTA_VISTA), HttpMethod.POST,
                         req -> mapper.toConsultaCuentaVistaRequest(req)));
 
-        operationHandlers.put("CAUDEX_CONSULTA_SALDOS_VISTA",
-                handler(endpoint("CAUDEX_CONSULTA_SALDOS_VISTA"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_CONSULTA_SALDOS_VISTA,
+                handler(endpoint(OperationTypes.CAUDEX_CONSULTA_SALDOS_VISTA), HttpMethod.POST,
                         req -> mapper.toConsultaSaldosVistaRequest(req)));
 
-        operationHandlers.put("CAUDEX_DEPOSITO_CUENTA_VISTA",
-                handler(endpoint("CAUDEX_DEPOSITO_CUENTA_VISTA"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_DEPOSITO_CUENTA_VISTA,
+                handler(endpoint(OperationTypes.CAUDEX_DEPOSITO_CUENTA_VISTA), HttpMethod.POST,
                         req -> mapper.toDepositoCuentaVistaRequest(req)));
 
-        operationHandlers.put("CAUDEX_RETIRO_CUENTA_VISTA",
-                handler(endpoint("CAUDEX_RETIRO_CUENTA_VISTA"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_RETIRO_CUENTA_VISTA,
+                handler(endpoint(OperationTypes.CAUDEX_RETIRO_CUENTA_VISTA), HttpMethod.POST,
                         req -> mapper.toRetiroCuentaVistaRequest(req)));
 
-        operationHandlers.put("CAUDEX_CONSULTA_HISTORICO_VISTA",
-                handler(endpoint("CAUDEX_CONSULTA_HISTORICO_VISTA"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_CONSULTA_HISTORICO_VISTA,
+                handler(endpoint(OperationTypes.CAUDEX_CONSULTA_HISTORICO_VISTA), HttpMethod.POST,
                         req -> mapper.toConsultaHistoricoVistaRequest(req)));
 
-        operationHandlers.put("CAUDEX_CONSULTA_SALDOS_CREDITO",
-                handler(endpoint("CAUDEX_CONSULTA_SALDOS_CREDITO"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_CONSULTA_SALDOS_CREDITO,
+                handler(endpoint(OperationTypes.CAUDEX_CONSULTA_SALDOS_CREDITO), HttpMethod.POST,
                         req -> mapper.toConsultaSaldosCreditoRequest(req)));
 
-        operationHandlers.put("CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL",
-                handler(endpoint("CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL,
+                handler(endpoint(OperationTypes.CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL), HttpMethod.POST,
                         this::buildFromDatos));
 
-        operationHandlers.put("CAUDEX_ALTA_RELACION_CLIENTE",
-                handler(endpoint("CAUDEX_ALTA_RELACION_CLIENTE"), HttpMethod.POST,
+        operationHandlers.put(OperationTypes.CAUDEX_ALTA_RELACION_CLIENTE,
+                handler(endpoint(OperationTypes.CAUDEX_ALTA_RELACION_CLIENTE), HttpMethod.POST,
                         this::buildFromDatos));
 
         log.info("[CAUDEX] {} operaciones registradas desde contratos ASP Pago", operationHandlers.size());
@@ -116,7 +120,7 @@ public class CaudexClient implements ProviderGateway {
 
     @Override
     public String providerName() {
-        return "CAUDEX";
+        return ProviderConstants.CAUDEX;
     }
 
     /**
@@ -136,7 +140,7 @@ public class CaudexClient implements ProviderGateway {
         CaudexOperationHandler opHandler = operationHandlers.get(opType);
         if (opHandler == null) {
             return Mono.error(new OperationNotSupportedException(
-                    "Operación Caudex no soportada: " + opType));
+                    ResponseMessages.OPERACION_CAUDEX_NO_SOPORTADA_PREFIX + opType));
         }
 
         Object requestBody = opHandler.bodyBuilder().apply(request);
@@ -159,9 +163,9 @@ public class CaudexClient implements ProviderGateway {
         log.warn("[{}] Caudex FALLBACK activado: {}", request.getCorrelationId(), ex.getMessage());
         return Mono.just(CanonicalResponse.builder()
                 .correlationId(request.getCorrelationId())
-                .codigoResultado("ERROR_PROVEEDOR")
-                .mensaje("Servicio Caudex temporalmente no disponible. Intente más tarde.")
-                .proveedor("CAUDEX")
+                .codigoResultado(ResponseCodes.ERROR_PROVEEDOR)
+                .mensaje(ResponseMessages.SERVICIO_CAUDEX_NO_DISPONIBLE)
+                .proveedor(ProviderConstants.CAUDEX)
                 .httpStatus(503)
                 .timestamp(Instant.now())
                 .build());
@@ -203,14 +207,14 @@ public class CaudexClient implements ProviderGateway {
 
         if (status == 401 || status == 403) {
             return Mono.error(new CaudexAuthException(
-                    "Error de autenticación con Caudex HTTP " + status + ": " + body, status));
+                    ResponseMessages.ERROR_AUTENTICACION_CAUDEX_PREFIX + status + ": " + body, status));
         }
 
         return Mono.error(new ExternalServiceException(
-                "ERROR_SERVICIO_EXTERNO",
+                ResponseCodes.ERROR_SERVICIO_EXTERNO,
                 HttpStatus.SERVICE_UNAVAILABLE,
-                "Caudex devolvió un error técnico al procesar la operación",
-                "CAUDEX",
+                ResponseMessages.ERROR_TECNICO_CAUDEX,
+                ProviderConstants.CAUDEX,
                 status
         ));
     }

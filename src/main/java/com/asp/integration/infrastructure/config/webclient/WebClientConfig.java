@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.asp.integration.infrastructure.config.caudex.CaudexBearerTokenFilter;
 import com.asp.integration.infrastructure.config.properties.CaudexProperties;
+import com.asp.integration.shared.constants.ProviderConstants;
 
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
@@ -69,7 +70,7 @@ public class WebClientConfig {
         return buildWebClient(caudexProperties.getBaseUrl(),
                 caudexProperties.getConnectTimeoutMs(),
                 caudexProperties.getReadTimeoutMs(),
-                "CAUDEX")
+                ProviderConstants.CAUDEX)
                 .mutate()
                 .filter(bearerTokenFilter)
                 .build();

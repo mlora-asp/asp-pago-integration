@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
+import com.asp.integration.shared.constants.ResponseMessages;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -87,7 +88,7 @@ public class CaudexProperties {
         String endpoint = endpoints.get(operationType);
         if (endpoint == null || endpoint.isBlank()) {
             throw new IllegalStateException(
-                    "Endpoint Caudex no configurado para operacion: " + operationType);
+                    ResponseMessages.ENDPOINT_CAUDEX_NO_CONFIGURADO_PREFIX + operationType);
         }
         return endpoint;
     }

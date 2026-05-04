@@ -1,5 +1,7 @@
 package com.asp.integration.domain.exception;
 
+import com.asp.integration.shared.constants.ProviderConstants;
+import com.asp.integration.shared.constants.ResponseCodes;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
@@ -25,17 +27,20 @@ public class CaudexAuthException extends ExternalServiceException {
     private final int upstreamHttpStatus;
 
     public CaudexAuthException(String message) {
-        super("ERROR_AUTH_PROVEEDOR", HttpStatus.SERVICE_UNAVAILABLE, message, "CAUDEX", null);
+        super(ResponseCodes.ERROR_AUTH_PROVEEDOR, HttpStatus.SERVICE_UNAVAILABLE,
+                message, ProviderConstants.CAUDEX, null);
         this.upstreamHttpStatus = 0;
     }
 
     public CaudexAuthException(String message, int httpStatus) {
-        super("ERROR_AUTH_PROVEEDOR", HttpStatus.SERVICE_UNAVAILABLE, message, "CAUDEX", httpStatus);
+        super(ResponseCodes.ERROR_AUTH_PROVEEDOR, HttpStatus.SERVICE_UNAVAILABLE,
+                message, ProviderConstants.CAUDEX, httpStatus);
         this.upstreamHttpStatus = httpStatus;
     }
 
     public CaudexAuthException(String message, Throwable cause) {
-        super("ERROR_AUTH_PROVEEDOR", HttpStatus.SERVICE_UNAVAILABLE, message, "CAUDEX", null, cause);
+        super(ResponseCodes.ERROR_AUTH_PROVEEDOR, HttpStatus.SERVICE_UNAVAILABLE,
+                message, ProviderConstants.CAUDEX, null, cause);
         this.upstreamHttpStatus = 0;
     }
 }

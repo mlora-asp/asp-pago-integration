@@ -24,6 +24,8 @@ import com.asp.integration.adapter.outbound.provider.dto.caudex.CaudexRetiroCuen
 import com.asp.integration.adapter.outbound.provider.dto.caudex.CaudexValidacionCurpRequestDto;
 import com.asp.integration.domain.model.canonical.CanonicalRequest;
 import com.asp.integration.domain.model.canonical.CanonicalResponse;
+import com.asp.integration.shared.constants.ResponseCodes;
+import com.asp.integration.shared.constants.ResponseMessages;
 
 /**
  * Mapper MapStruct para Caudex.
@@ -248,7 +250,7 @@ public interface CaudexMapper {
     @Mapping(target = "codigoResultado", expression = "java(resolveCodigoResultado(response))")
     @Mapping(target = "mensaje",         expression = "java(resolveMensaje(response))")
     @Mapping(target = "httpStatus", source = "response.httpStatus")
-    @Mapping(target = "proveedor",       constant = "CAUDEX")
+    @Mapping(target = "proveedor",       expression = "java(com.asp.integration.shared.constants.ProviderConstants.CAUDEX)")
     @Mapping(target = "resultado", source = "response.datos")
     @Mapping(target = "timestamp",       expression = "java(java.time.Instant.now())")
     CanonicalResponse toCanonicalResponse(CaudexResponseDto response, String correlationId);
@@ -288,15 +290,15 @@ public interface CaudexMapper {
 
     default String resolveCodigoResultado(CaudexResponseDto response) {
         if (response.getHttpStatus() != null && response.getHttpStatus() >= 400) {
-            return "ERROR_PROVEEDOR";
+            return ResponseCodes.ERROR_PROVEEDOR;
         }
-        return "SUCCESS";
+        return ResponseCodes.SUCCESS;
     }
 
     default String resolveMensaje(CaudexResponseDto response) {
         if (response.getMensaje() != null) return response.getMensaje();
-        if (response.getNumCliente() != null) return "Cliente procesado: " + response.getNumCliente();
-        if (response.getNumeroCuenta() != null) return "Cuenta procesada: " + response.getNumeroCuenta();
-        return "Operación procesada exitosamente";
+        if (response.getNumCliente() != null) return ResponseMessages.CLIENTE_PROCESADO_PREFIX + response.getNumCliente();
+        if (response.getNumeroCuenta() != null) return ResponseMessages.CUENTA_PROCESADA_PREFIX + response.getNumeroCuenta();
+        return ResponseMessages.OPERACION_EXITOSA;
     }
 }

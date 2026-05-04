@@ -12,6 +12,7 @@ import org.springframework.web.reactive.function.client.ExchangeFunction;
 import reactor.core.publisher.Mono;
 
 import com.asp.integration.domain.exception.CaudexAuthException;
+import com.asp.integration.shared.constants.ResponseMessages;
 
 /**
  * ExchangeFilterFunction que centraliza la inyección del Bearer Token de Caudex.
@@ -68,14 +69,14 @@ public class CaudexBearerTokenFilter implements ExchangeFilterFunction {
             tokenService.invalidateCachedToken("Caudex respondió HTTP 401");
             return response.releaseBody()
                     .then(Mono.error(new CaudexAuthException(
-                            "Token Caudex rechazado: credenciales inválidas o token expirado", 401)));
+                            ResponseMessages.TOKEN_CAUDEX_RECHAZADO, 401)));
         }
 
         if (status == HttpStatus.FORBIDDEN) {
             log.warn("[CAUDEX-AUTH] Sin permisos en Caudex (HTTP 403)");
             return response.releaseBody()
                     .then(Mono.error(new CaudexAuthException(
-                            "Sin permisos para ejecutar esta operación en Caudex", 403)));
+                            ResponseMessages.OPERACION_CAUDEX_SIN_PERMISOS, 403)));
         }
 
         return Mono.just(response);
