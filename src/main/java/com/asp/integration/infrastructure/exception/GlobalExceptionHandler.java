@@ -18,7 +18,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Manejador centralizado y estandarizado de excepciones del Bridge.
+ * Manejador centralizado de excepciones.
+ *
+ * @autor: HJMB
  */
 @Slf4j
 @RestControllerAdvice
@@ -124,8 +126,8 @@ public class GlobalExceptionHandler {
             return ResponseMessages.SOLICITUD_NO_PROCESADA;
         }
 
-        if (originalMessage.length() > 300) {
-            return originalMessage.substring(0, 300);
+        if (originalMessage.length() > 1000) {
+            return originalMessage.substring(0, 1000);
         }
 
         return originalMessage;

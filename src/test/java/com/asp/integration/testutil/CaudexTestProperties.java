@@ -25,6 +25,7 @@ public final class CaudexTestProperties {
         caudexProperties.setBaseUrl("http://localhost:9090");
         caudexProperties.setClientId("test-client-id");
         caudexProperties.setClientSecret("test-client-secret");
+        caudexProperties.setScope("message.read");
         caudexProperties.setEndpoints(readEndpoints(properties));
 
         return caudexProperties;

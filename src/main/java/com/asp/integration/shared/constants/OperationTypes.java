@@ -13,6 +13,7 @@ public final class OperationTypes {
     public static final String CAUDEX_CONSULTA_SALDOS_CREDITO = "CAUDEX_CONSULTA_SALDOS_CREDITO";
     public static final String CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL = "CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL";
     public static final String CAUDEX_ALTA_RELACION_CLIENTE = "CAUDEX_ALTA_RELACION_CLIENTE";
+    public static final String CAUDEX_ONBOARDING_ALTA = "CAUDEX_ONBOARDING_ALTA";
 
     public static final String LOGIN_DUMMY = "LOGIN_DUMMY";
     public static final String LOGOUT_DUMMY = "LOGOUT_DUMMY";

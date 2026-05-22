@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
+import com.asp.integration.infrastructure.config.properties.AspPagoContractProperties;
 import com.asp.integration.infrastructure.config.properties.CaudexProperties;
 import com.asp.integration.infrastructure.config.properties.CryptoProperties;
 import com.asp.integration.infrastructure.config.properties.IngressSecurityProperties;
@@ -20,6 +21,7 @@ import com.asp.integration.infrastructure.config.properties.IngressSecurityPrope
  */
 @SpringBootApplication
 @EnableConfigurationProperties({
+        AspPagoContractProperties.class,
         CaudexProperties.class,
         IngressSecurityProperties.class,
         CryptoProperties.class

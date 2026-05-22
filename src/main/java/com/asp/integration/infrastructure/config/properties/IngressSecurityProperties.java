@@ -1,6 +1,7 @@
 package com.asp.integration.infrastructure.config.properties;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -68,7 +69,8 @@ public class IngressSecurityProperties {
     /**
      * Lista blanca de clientes internos permitidos a entrar al Bridge.
      */
-    private List<String> allowedClientIds = new ArrayList<>(List.of("asp-pagos-auth-service"));
+    @NotEmpty
+    private List<String> allowedClientIds;
 
     /**
      * Exige identidad de usuario final en los endpoints de operación.

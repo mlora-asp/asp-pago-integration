@@ -41,7 +41,8 @@ public class OperationRoutingCatalog {
                 route(OperationTypes.CAUDEX_CONSULTA_HISTORICO_VISTA, ProviderId.CAUDEX),
                 route(OperationTypes.CAUDEX_CONSULTA_SALDOS_CREDITO, ProviderId.CAUDEX),
                 route(OperationTypes.CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL, ProviderId.CAUDEX),
-                route(OperationTypes.CAUDEX_ALTA_RELACION_CLIENTE, ProviderId.CAUDEX)
+                route(OperationTypes.CAUDEX_ALTA_RELACION_CLIENTE, ProviderId.CAUDEX),
+                route(OperationTypes.CAUDEX_ONBOARDING_ALTA, ProviderId.CAUDEX)
         );
     }
 

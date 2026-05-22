@@ -2,8 +2,12 @@ package com.asp.integration.adapter.inbound.rest.mapper.asppago;
 
 import com.asp.integration.adapter.inbound.rest.dto.OperacionRequestDto;
 import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoBeneficiarioResponseDto;
+import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoContractRequestDtos.DatosBasicosPF;
+import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoContractRequestDtos.DatosBasicosPM;
+import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoContractRequestDtos.OnboardingRequest;
 import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoResponseDto;
 import com.asp.integration.domain.model.canonical.CanonicalResponse;
+import com.asp.integration.infrastructure.config.properties.AspPagoContractProperties;
 import com.asp.integration.shared.constants.OperationTypes;
 import com.asp.integration.shared.constants.ResponseCodes;
 import com.asp.integration.shared.constants.ResponseMessages;
@@ -17,6 +21,11 @@ import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Convierte entre contratos ASP Pago y modelos internos.
+ *
+ * @autor: HJMB
+ */
 @Component
 @RequiredArgsConstructor
 public class AspPagoContractMapper {
@@ -24,6 +33,7 @@ public class AspPagoContractMapper {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     private final ObjectMapper objectMapper;
+    private final AspPagoContractProperties properties;
 
     public OperacionRequestDto toOperation(String operationType, String referencia, String canal, Object request) {
         Map<String, Object> datos = objectMapper.convertValue(request, MAP_TYPE);
@@ -33,7 +43,7 @@ public class AspPagoContractMapper {
                 .referencia(referencia)
                 .canal(canal)
                 .monto(resolveMonto(operationType, datos))
-                .moneda("MXN")
+                .moneda(properties.getDefaultCurrency())
                 .datos(datos)
                 .build();
     }
@@ -57,6 +67,39 @@ public class AspPagoContractMapper {
                 .error(error ? canonical.getCodigoResultado() : null)
                 .data(canonical.getResultado())
                 .build();
+    }
+
+    public AspPagoResponseDto toOnboardingResponse(CanonicalResponse canonical) {
+        int status = canonical.getHttpStatus() != null ? canonical.getHttpStatus() : HttpStatus.OK.value();
+        boolean success = status < 400 && ResponseCodes.SUCCESS.equalsIgnoreCase(canonical.getCodigoResultado());
+        return AspPagoResponseDto.builder()
+                .code(success ? properties.getSuccessCode() : status)
+                .message(canonical.getMensaje())
+                .error(success ? null : canonical.getCodigoResultado())
+                .data(resolveOnboardingData(canonical.getResultado()))
+                .build();
+    }
+
+    public String onboardingReferencia(String correlationId) {
+        return properties.getOnboardingReferencePrefix() + correlationId;
+    }
+
+    public String onboardingCanal(OnboardingRequest request) {
+        if (request == null) {
+            return properties.getDefaultChannel();
+        }
+
+        DatosBasicosPF basicosPF = request.getDatosBasicosPF();
+        if (basicosPF != null && basicosPF.getClaveCanalOperacion() != null && !basicosPF.getClaveCanalOperacion().isBlank()) {
+            return basicosPF.getClaveCanalOperacion();
+        }
+
+        DatosBasicosPM basicosPM = request.getDatosBasicosPM();
+        if (basicosPM != null && basicosPM.getClaveCanalOperacion() != null && !basicosPM.getClaveCanalOperacion().isBlank()) {
+            return basicosPM.getClaveCanalOperacion();
+        }
+
+        return properties.getDefaultChannel();
     }
 
     public AspPagoResponseDto unsupported(String mensaje) {
@@ -148,7 +191,7 @@ public class AspPagoContractMapper {
                     "statusTransaccion", "1",
                     "dtoMoneda", Map.of(
                             "numeroMoneda", 1,
-                            "descripcionCortaMoneda", "MXN"
+                            "descripcionCortaMoneda", properties.getDefaultCurrency()
                     )
             );
             case OperationTypes.CAUDEX_RETIRO_CUENTA_VISTA -> Map.of(
@@ -157,7 +200,7 @@ public class AspPagoContractMapper {
                     "statusTransaccion", "1",
                     "dtoMoneda", Map.of(
                             "numeroMoneda", 1,
-                            "descripcionCortaMoneda", "MXN"
+                            "descripcionCortaMoneda", properties.getDefaultCurrency()
                     )
             );
             case OperationTypes.CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL -> Map.of(
@@ -167,7 +210,7 @@ public class AspPagoContractMapper {
                             Map.entry("numeroProducto", 101),
                             Map.entry("descripcionProducto", "CUENTA VISTA"),
                             Map.entry("numeroTipoCredito", 1),
-                            Map.entry("monedaPago", "MXN"),
+                            Map.entry("monedaPago", properties.getDefaultCurrency()),
                             Map.entry("descripcionMoneda", "PESOS"),
                             Map.entry("montoSolicitado", 10000.00),
                             Map.entry("plazoMeses", 12),
@@ -217,7 +260,7 @@ public class AspPagoContractMapper {
                     "requiereLogin", true,
                     "fechaCambio", "2026-04-29T12:00:00"
             );
-            case OperationTypes.ONBOARDING_DUMMY -> Map.of();
+            case OperationTypes.ONBOARDING_DUMMY -> Map.of("numeroCliente", 111386);
             default -> null;
         };
     }
@@ -286,29 +329,36 @@ public class AspPagoContractMapper {
     }
 
     private Integer channelCode(String value) {
-        return switch (value) {
-            case "VP", "VF" -> 1;
-            case "APP" -> 2;
-            case "WEB" -> 3;
-            case "API" -> 4;
-            default -> 1;
-        };
+        return properties.getChannelCodes().getOrDefault(value, properties.getDefaultChannelCode());
     }
 
     private Integer instrumentCode(String value) {
-        return switch (value) {
-            case "E" -> 1;
-            case "T" -> 2;
-            case "C" -> 3;
-            default -> 1;
-        };
+        return properties.getInstrumentCodes().getOrDefault(value, properties.getDefaultInstrumentCode());
     }
 
     private Integer accountTypeCode(String value) {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException ex) {
-            return 1;
+            return properties.getDefaultAccountTypeCode();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object resolveOnboardingData(Object resultado) {
+        if (resultado instanceof Map<?, ?> rawMap) {
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> normalized.put(String.valueOf(key), value));
+
+            if (normalized.containsKey("numeroCliente")) {
+                return Map.of("numeroCliente", normalized.get("numeroCliente"));
+            }
+            if (normalized.containsKey("numCliente")) {
+                return Map.of("numeroCliente", normalized.get("numCliente"));
+            }
+            return normalized;
+        }
+
+        return resultado;
     }
 }

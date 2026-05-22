@@ -15,6 +15,27 @@ spring:
   config:
     import: optional:classpath:application-${spring.profiles.active:local}.yml
 
+# ── Contrato ASP Pago ────────────────────────────────────────────────────────
+contracts:
+  asp-pago:
+    success-code: ${ASP_PAGO_SUCCESS_CODE:9999}
+    default-currency: ${ASP_PAGO_DEFAULT_CURRENCY:MXN}
+    default-channel: ${ASP_PAGO_DEFAULT_CHANNEL:API}
+    onboarding-reference-prefix: ${ASP_PAGO_ONBOARDING_REFERENCE_PREFIX:ONBOARDING-}
+    default-channel-code: ${ASP_PAGO_DEFAULT_CHANNEL_CODE:1}
+    default-instrument-code: ${ASP_PAGO_DEFAULT_INSTRUMENT_CODE:1}
+    default-account-type-code: ${ASP_PAGO_DEFAULT_ACCOUNT_TYPE_CODE:1}
+    channel-codes:
+      VP: 1
+      VF: 1
+      APP: 2
+      WEB: 3
+      API: 4
+    instrument-codes:
+      E: 1
+      T: 2
+      C: 3
+
 # ── Seguridad de ingreso JWT externo -> Kong -> Bridge ───────────────────────
 # El Bridge sólo acepta tráfico de negocio que venga desde Kong con un secreto
 # interno y un JWT ya validado por el gateway.
@@ -27,8 +48,7 @@ security:
     authenticated-user-header: X-Authenticated-User
     authenticated-scopes-header: X-Authenticated-Scopes
     system-origin-header: X-Sistema-Origen
-    allowed-client-ids:
-      - asp-pagos-auth-service
+    allowed-client-ids: ${GATEWAY_ALLOWED_CLIENT_IDS:asp-pagos-auth-service}
     require-authenticated-user-for-operations: true
     public-path-prefixes:
       - /actuator/health
@@ -52,7 +72,7 @@ providers:
     # Credenciales OAuth2 client_credentials. NUNCA hardcodear.
     client-id: ${CAUDEX_CLIENT_ID}
     client-secret: ${CAUDEX_CLIENT_SECRET}
-    scope: message.read
+    scope: ${CAUDEX_SCOPE:message.read}
     connect-timeout-ms: 5000
     read-timeout-ms: 15000
     token:
@@ -67,6 +87,7 @@ providers:
       "[CAUDEX_CONSULTA_SALDOS_CREDITO]": /api/credito/consultaSaldosCredito
       "[CAUDEX_CONSULTA_PERFIL_TRANSACCIONAL]": /api/clientes/perfilTransaccional/consulta
       "[CAUDEX_ALTA_RELACION_CLIENTE]": /api/clientes/relacionClienteCliente/alta
+      "[CAUDEX_ONBOARDING_ALTA]": /api/clientes/onboarding/alta
 
 # ── Resilience4j ──────────────────────────────────────────────────────────────
 resilience4j:

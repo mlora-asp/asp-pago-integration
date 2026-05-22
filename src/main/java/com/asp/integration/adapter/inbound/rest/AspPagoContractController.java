@@ -10,8 +10,12 @@ import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoContractReque
 import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoContractRequestDtos.PasswordResetRequest;
 import com.asp.integration.adapter.inbound.rest.dto.asppago.AspPagoResponseDto;
 import com.asp.integration.adapter.inbound.rest.mapper.asppago.AspPagoContractMapper;
+import com.asp.integration.application.command.ProcessOperationCommand;
 import com.asp.integration.application.port.inbound.PayloadCryptoPort;
+import com.asp.integration.application.usecase.ProcessOperationUseCase;
 import com.asp.integration.domain.exception.BadRequestException;
+import com.asp.integration.infrastructure.security.GatewayRequestContext;
+import com.asp.integration.infrastructure.security.TrustedGatewayFilter;
 import com.asp.integration.shared.constants.ApiPaths;
 import com.asp.integration.shared.constants.OpenApiTexts;
 import com.asp.integration.shared.constants.OperationTypes;
@@ -21,6 +25,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
@@ -28,18 +33,26 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Expone los contratos de entrada del canal ASP Pago.
+ *
+ * @autor: HJMB
+ */
 @RestController
 @RequiredArgsConstructor
 @Tag(name = OpenApiTexts.TAG_ASP_PAGO, description = OpenApiTexts.TAG_ASP_PAGO_DESCRIPTION)
 public class AspPagoContractController {
 
     private final AspPagoContractMapper mapper;
+    private final ProcessOperationUseCase processOperationUseCase;
     private final PayloadCryptoPort payloadCryptoPort;
     private final ObjectMapper objectMapper;
     private final Validator validator;
@@ -82,9 +95,33 @@ public class AspPagoContractController {
 
     @PostMapping(ApiPaths.ONBOARDING)
     @Operation(summary = OpenApiTexts.SUMMARY_ONBOARDING)
-    public ResponseEntity<AspPagoResponseDto> onboarding(@Valid @RequestBody EncryptedRequestDto encryptedRequest) {
-        decryptAndValidate(encryptedRequest, OnboardingRequest.class);
-        return ResponseEntity.ok(encryptData(mapper.dummy(OperationTypes.ONBOARDING_DUMMY, ResponseMessages.ONBOARDING_EXITOSO)));
+    public Mono<ResponseEntity<AspPagoResponseDto>> onboarding(
+            @Valid @RequestBody EncryptedRequestDto encryptedRequest,
+            @RequestHeader(value = "X-Correlation-Id", required = false) String correlationIdHeader,
+            HttpServletRequest httpServletRequest) {
+
+        OnboardingRequest request = decryptAndValidate(encryptedRequest, OnboardingRequest.class);
+        String correlationId = resolveCorrelationId(correlationIdHeader);
+        GatewayRequestContext gatewayContext = requireGatewayContext(httpServletRequest);
+
+        ProcessOperationCommand command = new ProcessOperationCommand(
+                mapper.toOperation(
+                        OperationTypes.CAUDEX_ONBOARDING_ALTA,
+                        mapper.onboardingReferencia(correlationId),
+                        mapper.onboardingCanal(request),
+                        request
+                ),
+                gatewayContext.systemOrigin(),
+                correlationId,
+                gatewayContext.authenticatedClient(),
+                gatewayContext.authenticatedUser(),
+                gatewayContext.authenticatedScopes()
+        );
+
+        return processOperationUseCase.process(command)
+                .map(mapper::toOnboardingResponse)
+                .map(this::encryptData)
+                .map(ResponseEntity::ok);
     }
 
     private <T> T decryptAndValidate(EncryptedRequestDto encryptedRequest, Class<T> requestType) {
@@ -136,5 +173,20 @@ public class AspPagoContractController {
             throw new BadRequestException(ResponseCodes.ERROR_ENCRIPTADO_RESPUESTA,
                     ResponseMessages.SERIALIZAR_DATA_RESPUESTA_ERROR, ex);
         }
+    }
+
+    private String resolveCorrelationId(String correlationIdHeader) {
+        return (correlationIdHeader != null && !correlationIdHeader.isBlank())
+                ? correlationIdHeader
+                : UUID.randomUUID().toString();
+    }
+
+    private GatewayRequestContext requireGatewayContext(HttpServletRequest request) {
+        Object context = request.getAttribute(TrustedGatewayFilter.REQUEST_CONTEXT_ATTRIBUTE);
+        if (context instanceof GatewayRequestContext gatewayContext) {
+            return gatewayContext;
+        }
+        throw new BadRequestException(ResponseCodes.ERROR_SEGURIDAD_INGRESS,
+                "No se encontró contexto autenticado del gateway en la solicitud");
     }
 }

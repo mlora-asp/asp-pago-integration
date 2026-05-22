@@ -23,7 +23,7 @@ providers:
     base-url: ${CAUDEX_BASE_URL}
     client-id: ${CAUDEX_CLIENT_ID}
     client-secret: ${CAUDEX_CLIENT_SECRET}
-    scope: message.read
+    scope: ${CAUDEX_SCOPE:message.read}
     connect-timeout-ms: 5000
     read-timeout-ms: 15000
     token:

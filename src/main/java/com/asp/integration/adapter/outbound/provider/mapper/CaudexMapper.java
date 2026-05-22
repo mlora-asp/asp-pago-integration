@@ -28,19 +28,7 @@ import com.asp.integration.shared.constants.ResponseCodes;
 import com.asp.integration.shared.constants.ResponseMessages;
 
 /**
- * Mapper MapStruct para Caudex.
- *
- * Responsabilidades:
- *  - CanonicalRequest  → DTOs de request Caudex (por tipo de operación)
- *  - CaudexResponseDto → CanonicalResponse
- *
- * Caudex es multi-endpoint, por lo que este mapper ofrece un método
- * de conversión por familia de operación. El CaudexClient selecciona
- * el método correcto según el operationType del CanonicalRequest.
- *
- * Los campos específicos de Caudex se extraen del Map<String,Object> datos
- * del CanonicalRequest usando el helper getFromDatos().
- *
+ * Mapper de contratos internos hacia Caudex.
  *
  * @autor: HJMB
  */
@@ -251,7 +239,7 @@ public interface CaudexMapper {
     @Mapping(target = "mensaje",         expression = "java(resolveMensaje(response))")
     @Mapping(target = "httpStatus", source = "response.httpStatus")
     @Mapping(target = "proveedor",       expression = "java(com.asp.integration.shared.constants.ProviderConstants.CAUDEX)")
-    @Mapping(target = "resultado", source = "response.datos")
+    @Mapping(target = "resultado",       expression = "java(resolveResultado(response))")
     @Mapping(target = "timestamp",       expression = "java(java.time.Instant.now())")
     CanonicalResponse toCanonicalResponse(CaudexResponseDto response, String correlationId);
 
@@ -300,5 +288,34 @@ public interface CaudexMapper {
         if (response.getNumCliente() != null) return ResponseMessages.CLIENTE_PROCESADO_PREFIX + response.getNumCliente();
         if (response.getNumeroCuenta() != null) return ResponseMessages.CUENTA_PROCESADA_PREFIX + response.getNumeroCuenta();
         return ResponseMessages.OPERACION_EXITOSA;
+    }
+
+    @SuppressWarnings("unchecked")
+    default Object resolveResultado(CaudexResponseDto response) {
+        if (response.getDatos() instanceof Map<?, ?> rawMap) {
+            Map<String, Object> normalized = new java.util.LinkedHashMap<>();
+            rawMap.forEach((key, value) -> normalized.put(String.valueOf(key), value));
+            if (response.getNumCliente() != null && !normalized.containsKey("numeroCliente")) {
+                normalized.put("numeroCliente", response.getNumCliente());
+            }
+            if (response.getNumeroCuenta() != null && !normalized.containsKey("numeroCuenta")) {
+                normalized.put("numeroCuenta", response.getNumeroCuenta());
+            }
+            return normalized;
+        }
+
+        if (response.getDatos() != null) {
+            return response.getDatos();
+        }
+
+        if (response.getNumCliente() != null) {
+            return Map.of("numeroCliente", response.getNumCliente());
+        }
+
+        if (response.getNumeroCuenta() != null) {
+            return Map.of("numeroCuenta", response.getNumeroCuenta());
+        }
+
+        return null;
     }
 }

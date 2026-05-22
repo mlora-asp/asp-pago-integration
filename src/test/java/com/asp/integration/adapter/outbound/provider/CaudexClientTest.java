@@ -1,6 +1,7 @@
 package com.asp.integration.adapter.outbound.provider;
 
 import com.asp.integration.adapter.outbound.provider.mapper.CaudexMapper;
+import com.asp.integration.domain.exception.ExternalServiceException;
 import com.asp.integration.domain.model.canonical.CanonicalRequest;
 import com.asp.integration.domain.model.canonical.CanonicalResponse;
 import com.asp.integration.testutil.CaudexTestProperties;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,14 +29,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests unitarios para CaudexClient.
+ * Pruebas del cliente Caudex.
  *
- * La autenticación Bearer es responsabilidad de CaudexBearerTokenFilter.
- * En estos tests el WebClient tiene un filtro inline que simula la inyección
- * del token, de la misma forma que lo haría el filtro real en producción.
- *
- * Esto permite testear CaudexClient de forma aislada sin depender de
- * CaudexTokenService ni del servidor OAuth2 de Caudex.
+ * @autor: HJMB
  */
 @ExtendWith(MockitoExtension.class)
 class CaudexClientTest {
@@ -50,7 +47,6 @@ class CaudexClientTest {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
 
-        // Simular el CaudexBearerTokenFilter — inyecta Authorization header transparentemente
         ExchangeFilterFunction bearerTokenFilter = ExchangeFilterFunction.ofRequestProcessor(req -> {
             ClientRequest authorizedRequest = ClientRequest.from(req)
                     .header("Authorization", "Bearer test-token-mock")
@@ -200,6 +196,32 @@ class CaudexClientTest {
         StepVerifier.create(caudexClient.execute(request))
                 .assertNext(resp -> assertThat(resp.getCodigoResultado()).isEqualTo("SUCCESS"))
                 .verifyComplete();
+    }
+
+    @Test
+    void ejecutar_onboarding_whenCaudexReturnsBadRequest_propagatesCaudexValidationError() {
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(400)
+                .setBody("{\"code\":8144,\"message\":null,\"error\":\"El campo 'datosComplementariosPF.regimenFiscal' es un dato requerido\",\"data\":null}")
+                .addHeader("Content-Type", "application/json"));
+
+        CanonicalRequest request = CanonicalRequest.builder()
+                .correlationId("corr-onboarding-400")
+                .operationType("CAUDEX_ONBOARDING_ALTA")
+                .datos(Map.of("numTipoPersona", 1))
+                .build();
+
+        StepVerifier.create(caudexClient.execute(request))
+                .expectErrorSatisfies(error -> {
+                    assertThat(error).isInstanceOf(ExternalServiceException.class);
+                    ExternalServiceException ex = (ExternalServiceException) error;
+                    assertThat(ex.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getErrorCode()).isEqualTo("CAUDEX_8144");
+                    assertThat(ex.getUpstreamStatus()).isEqualTo(400);
+                    assertThat(ex.getProvider()).isEqualTo("CAUDEX");
+                    assertThat(ex.getMessage()).contains("datosComplementariosPF.regimenFiscal");
+                })
+                .verify();
     }
 
 }

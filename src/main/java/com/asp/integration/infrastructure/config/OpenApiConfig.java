@@ -99,8 +99,13 @@ public class OpenApiConfig {
                                 ## Cobertura actual de fase 1
 
                                 Actualmente el bridge expone la primera fase de los contratos
-                                ASP Pago. Esta fase habilita el flujo inicial de autenticación,
-                                onboarding y alta de beneficiario con respuestas dummy.
+                                ASP Pago.
+
+                                Estado actual de implementación:
+
+                                - autenticación y recuperación de password con respuestas dummy
+                                - onboarding conectado al flujo real de Caudex
+                                - alta de beneficiario con respuesta dummy
 
                                 Dominios activos en esta fase:
 
@@ -113,8 +118,9 @@ public class OpenApiConfig {
 
                                 Los consumidores envían los DTOs específicos definidos por ASP Pago.
                                 El adapter inbound desencripta el request, valida el contrato y
-                                conserva el desacoplamiento hacia la capa de aplicación. Por ahora,
-                                las respuestas son dummy para habilitar el trabajo del frontend.
+                                conserva el desacoplamiento hacia la capa de aplicación. El endpoint
+                                de onboarding ya enruta a Caudex; el resto de endpoints de esta fase
+                                permanecen en dummy mientras se conectan los flujos restantes.
 
                                 ## Endpoints expuestos
 
@@ -134,7 +140,7 @@ public class OpenApiConfig {
                                 ## Resiliencia
 
                                 Cada llamada a proveedor tiene:
-                                - **Circuit Breaker** (abre después del 50% de fallos en ventana de 10 llamadas)
+                                - **Circuit Breaker** (abre después del 50%% de fallos en ventana de 10 llamadas)
                                 - **Retry** (3 reintentos con backoff exponencial)
                                 - **Bulkhead** (máximo 20 llamadas concurrentes por proveedor)
                                 - **Time Limiter** (timeout de 10s)

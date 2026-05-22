@@ -57,11 +57,8 @@ public class CaudexProperties {
     @NotBlank(message = "providers.caudex.client-secret es obligatorio")
     private String clientSecret;
 
-    /**
-     * Scope OAuth2 requerido por Caudex.
-     * Valor por defecto: "message.read" (configurado en Caudex Authorization Server).
-     */
-    private String scope = "message.read";
+    @NotBlank(message = "providers.caudex.scope es obligatorio")
+    private String scope;
 
     /** Timeout de conexión TCP en milisegundos. */
     @Positive

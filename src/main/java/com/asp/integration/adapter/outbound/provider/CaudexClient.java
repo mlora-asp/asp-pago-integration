@@ -13,6 +13,8 @@ import com.asp.integration.shared.constants.OperationTypes;
 import com.asp.integration.shared.constants.ProviderConstants;
 import com.asp.integration.shared.constants.ResponseCodes;
 import com.asp.integration.shared.constants.ResponseMessages;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -34,28 +36,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Outbound Adapter para Caudex Core Banking.
- *
- * Este adapter mantiene sólo las operaciones Caudex requeridas por los contratos
- * oficiales de ASP Pago. Usa el <b>Command Router Pattern</b>:
- *
- * <pre>
- *   operationType → CaudexOperationHandler (endpoint + método HTTP + body builder)
- * </pre>
- *
- * La autenticación OAuth2 (Bearer Token) es completamente transparente:
- * el {@code caudexWebClient} tiene registrado el {@code CaudexBearerTokenFilter}
- * que inyecta un token Caudex cacheado y lo renueva antes de expirar.
- * Este client no conoce nada del flujo OAuth2.
- *
- * Para agregar un nuevo endpoint Caudex:
- * <ol>
- *   <li>Confirmar que existe en los contratos oficiales de ASP Pago.</li>
- *   <li>Registrar en {@code registerHandlers()} con la ruta y el mapper correcto.</li>
- *   <li>Agregar el tipo de operación en {@link com.asp.integration.application.service.InboundAdapterService}.</li>
- *   <li>Crear el DTO de request si tiene campos específicos.</li>
- *   <li>Agregar el método de mapeo en {@link CaudexMapper}.</li>
- * </ol>
+ * Adapter de salida para operaciones Caudex.
  *
  * @autor: HJMB
  */
@@ -64,20 +45,14 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class CaudexClient implements ProviderGateway {
 
-    /**
-     * WebClient con CaudexBearerTokenFilter registrado.
-     * El filtro inyecta automáticamente Authorization: Bearer {token}.
-     */
+    private static final ObjectMapper ERROR_OBJECT_MAPPER = new ObjectMapper();
+
     @Qualifier("caudexWebClient")
     private final WebClient caudexWebClient;
 
     private final CaudexMapper mapper;
     private final CaudexProperties caudexProperties;
 
-    /**
-     * Registro interno: operationType → handler (endpoint + método + body builder).
-     * Inicializado en @PostConstruct.
-     */
     private final Map<String, CaudexOperationHandler> operationHandlers = new HashMap<>();
 
     @PostConstruct
@@ -115,6 +90,10 @@ public class CaudexClient implements ProviderGateway {
                 handler(endpoint(OperationTypes.CAUDEX_ALTA_RELACION_CLIENTE), HttpMethod.POST,
                         this::buildFromDatos));
 
+        operationHandlers.put(OperationTypes.CAUDEX_ONBOARDING_ALTA,
+                handler(endpoint(OperationTypes.CAUDEX_ONBOARDING_ALTA), HttpMethod.POST,
+                        this::buildFromDatos));
+
         log.info("[CAUDEX] {} operaciones registradas desde contratos ASP Pago", operationHandlers.size());
     }
 
@@ -123,12 +102,6 @@ public class CaudexClient implements ProviderGateway {
         return ProviderConstants.CAUDEX;
     }
 
-    /**
-     * Ejecuta la operación Caudex correspondiente al operationType del CanonicalRequest.
-     *
-     * El Bearer token es inyectado de forma transparente por el CaudexBearerTokenFilter
-     * registrado en el caudexWebClient — este método no gestiona autenticación.
-     */
     @Override
     @CircuitBreaker(name = "proveedorExterno", fallbackMethod = "fallback")
     @Retry(name = "proveedorExterno")
@@ -155,9 +128,7 @@ public class CaudexClient implements ProviderGateway {
     }
 
     /**
-     * Fallback activado cuando el circuit breaker está OPEN o se agota el retry.
-     * Devuelve una respuesta canónica de error controlado para que el adapter
-     * de entrada reciba una respuesta coherente en lugar de una excepción sin procesar.
+     * Respuesta de respaldo para fallas del proveedor.
      */
     public Mono<CanonicalResponse> fallback(CanonicalRequest request, Throwable ex) {
         log.warn("[{}] Caudex FALLBACK activado: {}", request.getCorrelationId(), ex.getMessage());
@@ -171,13 +142,6 @@ public class CaudexClient implements ProviderGateway {
                 .build());
     }
 
-    // ── Helpers privados ──────────────────────────────────────────────────────
-
-    /**
-     * Ejecuta la petición HTTP a Caudex.
-     * El Authorization header es añadido por el CaudexBearerTokenFilter antes de
-     * que esta petición llegue a la red.
-     */
     private Mono<CaudexResponseDto> executeRequest(String endpoint, HttpMethod method,
                                                     Object body, String correlationId) {
         WebClient.RequestBodySpec requestSpec = caudexWebClient
@@ -210,6 +174,16 @@ public class CaudexClient implements ProviderGateway {
                     ResponseMessages.ERROR_AUTENTICACION_CAUDEX_PREFIX + status + ": " + body, status));
         }
 
+        if (status == 400) {
+            return Mono.error(new ExternalServiceException(
+                    caudexErrorCode(body),
+                    HttpStatus.BAD_REQUEST,
+                    caudexErrorMessage(body),
+                    ProviderConstants.CAUDEX,
+                    status
+            ));
+        }
+
         return Mono.error(new ExternalServiceException(
                 ResponseCodes.ERROR_SERVICIO_EXTERNO,
                 HttpStatus.SERVICE_UNAVAILABLE,
@@ -219,11 +193,37 @@ public class CaudexClient implements ProviderGateway {
         ));
     }
 
-    /**
-     * Pass-through: pasa el mapa datos del CanonicalRequest directamente a Caudex.
-     * Usado para operaciones donde el contrato envía el payload Caudex completo
-     * dentro de datos sin necesitar un mapper específico.
-     */
+    private String caudexErrorCode(String body) {
+        try {
+            JsonNode root = ERROR_OBJECT_MAPPER.readTree(body);
+            JsonNode code = root.get("code");
+            if (code != null && !code.isNull()) {
+                return "CAUDEX_" + code.asText();
+            }
+        } catch (Exception ex) {
+            log.debug("[CAUDEX] No fue posible extraer code del error 400: {}", ex.getMessage());
+        }
+        return ResponseCodes.ERROR_SERVICIO_EXTERNO;
+    }
+
+    private String caudexErrorMessage(String body) {
+        try {
+            JsonNode root = ERROR_OBJECT_MAPPER.readTree(body);
+            JsonNode error = root.get("error");
+            if (error != null && error.isTextual() && !error.asText().isBlank()) {
+                return error.asText();
+            }
+
+            JsonNode message = root.get("message");
+            if (message != null && message.isTextual() && !message.asText().isBlank()) {
+                return message.asText();
+            }
+        } catch (Exception ex) {
+            log.debug("[CAUDEX] No fue posible extraer mensaje del error 400: {}", ex.getMessage());
+        }
+        return ResponseMessages.ERROR_TECNICO_CAUDEX;
+    }
+
     private Object buildFromDatos(CanonicalRequest request) {
         return request.getDatos() != null ? request.getDatos() : Map.of();
     }
@@ -237,10 +237,6 @@ public class CaudexClient implements ProviderGateway {
         return new CaudexOperationHandler(endpoint, method, bodyBuilder);
     }
 
-    /**
-     * Descriptor inmutable de una operación Caudex.
-     * Encapsula: endpoint Caudex + método HTTP + función que construye el body.
-     */
     private record CaudexOperationHandler(
             String endpoint,
             HttpMethod method,
