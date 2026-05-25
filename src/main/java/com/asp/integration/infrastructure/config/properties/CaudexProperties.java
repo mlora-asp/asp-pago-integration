@@ -2,7 +2,6 @@ package com.asp.integration.infrastructure.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotBlank;
@@ -30,7 +29,6 @@ import java.util.Map;
  * @autor: HJMB
  */
 @Data
-@Component
 @Validated
 @ConfigurationProperties(prefix = "providers.caudex")
 public class CaudexProperties {
